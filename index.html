@@ -276,7 +276,7 @@ new Vue({
               this.vdColors[this.vdSettingFrame][y][x] = 'rgb(' + pix[0] + ', ' + pix[1] + ', ' + pix[2] + ')'; */
 
               thisCell += '<td style="background-color: rgb(' + pix[0] + ', ' + pix[1] + ', ' + pix[2] + ');height: ' + this.vdCellWidth + 'px; width: ' + this.vdCellWidth + 'px"></td>';
-              if (y === 2) console.log(thisCell)
+              // if (y === 2) console.log(thisCell)
 
               if (!this.vdTypes[this.vdSettingFrame]) this.vdTypes[this.vdSettingFrame] = [];
               if (!this.vdTypes[this.vdSettingFrame][y]) this.vdTypes[this.vdSettingFrame][y] = [];
@@ -313,7 +313,7 @@ new Vue({
     mtdSizeUpdated: function() {
       this.vdCells.forEach((_eachCellContent, i, theArray) => {
         var re = new RegExp('height: ' + oldCellWidth + 'px; width: ' + oldCellWidth + 'px', 'g');
-        if (i === 0) console.log(theArray[i])
+        // if (i === 0) console.log(theArray[i])
         theArray[i] = _eachCellContent.replace(re, 'height: ' + this.vdCellWidth + 'px; width: ' + this.vdCellWidth + 'px');
       });
       oldCellWidth = this.vdCellWidth;
