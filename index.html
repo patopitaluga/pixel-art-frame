@@ -1,0 +1,327 @@
+<html>
+<head>
+  <title>.</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      align-items: center;
+      background: #000;
+      display: flex;
+      font-family: 'Roboto', sans-serif;
+      height: 100vh;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    @keyframes gradient {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    table {
+      background-color: #000;
+      background-image: radial-gradient(
+        circle,
+          rgba(255, 255, 255, .19) 0%,
+          rgba(255, 255, 255, .05) 80%
+        );
+      background-repeat: no-repeat;
+      background-size: 200% 200%;
+      border: 1px #000 solid;
+      border-collapse: separate;
+      border-spacing: 3px;
+      margin: auto;
+    	animation: gradient 15s ease infinite;
+    }
+
+    td {
+      border: 0;
+      box-sizing: border-box;
+      box-shadow: inset 0 0 9px -1px rgba(0, 0, 0, 1);
+      height: 20px;
+      padding: 0;
+      margin: 0;
+      vertical-align: top;
+      width: 20px;
+    }
+
+    td.td--light {
+      box-shadow: inset 0 0 11px -2px rgba(255, 255, 255, .18);
+    }
+
+    .settings-button {
+      border: 0;
+      background-color: transparent;
+      background-image: url('./cog.svg');
+      background-size: 16px auto;
+      background-repeat: no-repeat;
+      background-position: center center;
+      cursor: pointer;
+      padding: 0;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+    }
+
+    .settings-dialog-cont {
+      align-items: center;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      left: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+      z-index: 9;
+    }
+
+    .settings-dialog {
+      background: #fff;
+      border: 2px #666 solid;
+      border-radius: 6px;
+      margin: auto;
+      padding: 10px;
+      z-index: 10;
+    }
+
+    label {
+      display: block;
+      padding: 10px 0;
+    }
+
+    label > span {
+      display: block;
+      font-size: 14px;
+      padding-bottom: 4px;
+      padding-left: 2px;
+    }
+  </style>
+  <style>
+    [v-cloak] {
+      display: none !important
+    }
+    /* Hide Vue while loading */
+  </style>
+</head>
+<body>
+<div id="app">
+  <div
+    v-cloak
+    style="position: relative;overflow:hidden;"
+  >
+    <table style="position: relative; z-index: 2;" id="table">
+    </table>
+
+  </div>
+  <button
+    class="settings-button"
+    @click="mtdToggleSettings"
+  >
+  </button>
+  <div
+    v-cloak
+    v-if="vdDisplayingSettings"
+    class="settings-dialog-cont"
+    @click="mtdToggleSettings"
+  >
+    <div class="settings-dialog" @click.stop="">
+
+      <div v-if="vdLoadingImage">
+        Loading
+      </div>
+      <div v-else>
+        <label>
+          <span>Image {{ vdSettingFrame }}</span>
+          <input
+            type="file"
+            @change="mtdFileLoaded"
+            multiple
+          />
+        </label>
+
+        <label v-if="vdSettingFrame > 1">
+          <span>Current definition</span>
+          {{ vdCols }} x {{ vdRows }}px
+        </label>
+
+        <label>
+          <span>Cell size (px)</span>
+          <input
+            type="number"
+            v-model="vdCellWidth"
+            min="16"
+            @change="mtdSizeUpdated"
+          />
+        </label>
+
+        <label v-if="vdSettingFrame > 1">
+          <span>Frame duration (ms)</span>
+          <input
+            type="number"
+            v-model="vdFrameDuration"
+            step="100"
+            min="100"
+          />
+        </label>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
+<script>
+
+let oldCellWidth = 20;
+
+new Vue({
+  el: '#app',
+  data: {
+    vdCellWidth: 20,
+    vdCols: 0, // width
+    vdRows: 0, // height
+    vdDisplayingSettings: true,
+    // vdColors: [],
+    vdCells: [],
+    vdTypes: [],
+    vdLoadedFrames: 0,
+    vdSettingFrame: 1,
+    vdCurrentFrame: 1,
+    vdFrameDuration: 1000,
+    vdLoadingImage: false,
+  },
+  mounted: function() {
+    let framesInLocalStorage = [];
+    let lastFrames = window.localStorage.getItem('f1_frames');
+    if (!lastFrames) lastFrames = '{ "frames": [] }';
+    try {
+      framesInLocalStorage = JSON.parse(lastFrames).frames;
+    } catch (err) {
+      framesInLocalStorage = [];
+    }
+    this.vdCells = framesInLocalStorage;
+
+    const lastResolution = window.localStorage.getItem('f1_resolution');
+    if (lastResolution !== null && !isNaN(lastResolution)) this.vdCellWidth = Number(lastResolution);
+
+    framesInLocalStorage.forEach((_eachPrevFrame) => {
+      this.vdCells[this.vdSettingFrame - 1] = _eachPrevFrame;
+      this.vdLoadedFrames++;
+      this.vdSettingFrame++;
+    });
+    if (this.vdLoadedFrames === 1) {
+      this.vdDisplayingSettings = false;
+      document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
+    }
+    if (this.vdLoadedFrames > 1) {
+      this.vdDisplayingSettings = false;
+      this.tidalWave();
+    }
+  },
+  methods: {
+    tidalWave: function() {
+      document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
+      this.vdCurrentFrame += 1;
+
+      if (this.vdCurrentFrame === this.vdLoadedFrames + 1) this.vdCurrentFrame = 1;
+      setTimeout(this.tidalWave, this.vdFrameDuration);
+    },
+
+    /**
+     *
+     */
+    mtdToggleSettings: function() {
+      this.vdDisplayingSettings = !this.vdDisplayingSettings
+    },
+
+    /**
+     *
+     */
+    mtdFileLoaded: function(_evt) {
+      const howManyFiles = _evt.target.files.length;
+      let processedFile = 0;
+
+      const processOneFile = () => {
+        this.vdLoadingImage = true;
+        const theCanvas = document.createElement('canvas');
+        const theContext = theCanvas.getContext('2d');
+        const img = new Image;
+        img.onload = () => {
+          // alert(this.width + 'x' + this.height);
+          let width = Math.min(img.width, 16);
+          let height = Math.min(img.height, 16);
+          theContext.drawImage(img, 0, 0, img.width, img.height, 0, 0, width, height);
+          if (this.vdCols === 0) this.vdCols = width;
+          if (this.vdRows === 0) this.vdRows = height;
+
+          let thisCell = '';
+          for (let y = 0; y < this.vdRows; y++) {
+            thisCell += '<tr>';
+            for (let x = 0; x < this.vdCols; x++) {
+              const imgd = theContext.getImageData(x, y, 1, 1);
+              const pix = imgd.data;
+              /* if (!this.vdColors[this.vdSettingFrame]) this.vdColors[this.vdSettingFrame] = [];
+              if (!this.vdColors[this.vdSettingFrame][y]) this.vdColors[this.vdSettingFrame][y] = [];
+              this.vdColors[this.vdSettingFrame][y][x] = 'rgb(' + pix[0] + ', ' + pix[1] + ', ' + pix[2] + ')'; */
+
+              thisCell += '<td style="background-color: rgb(' + pix[0] + ', ' + pix[1] + ', ' + pix[2] + ');height: ' + this.vdCellWidth + 'px; width: ' + this.vdCellWidth + 'px"></td>';
+              if (y === 2) console.log(thisCell)
+
+              if (!this.vdTypes[this.vdSettingFrame]) this.vdTypes[this.vdSettingFrame] = [];
+              if (!this.vdTypes[this.vdSettingFrame][y]) this.vdTypes[this.vdSettingFrame][y] = [];
+              this.vdTypes[this.vdSettingFrame][y][x] = 0;
+              //this.vdTypes[this.vdSettingFrame][y][x] = ((pix[0] + pix[1] + pix[2]) / 3 < 40) ? 1 : 0;
+            }
+            thisCell += '</tr>';
+
+            this.vdCells[this.vdSettingFrame - 1] = thisCell;
+          }
+
+          this.vdLoadingImage = false;
+          this.vdSettingFrame += 1;
+          this.vdLoadedFrames += 1;
+          if (this.vdLoadedFrames === 2)
+            this.tidalWave();
+          processedFile++;
+
+          if (processedFile < howManyFiles) {
+            processOneFile();
+          } else {
+            window.localStorage.setItem('f1_frames', JSON.stringify({ frames: this.vdCells }));
+            window.localStorage.setItem('f1_resolution', this.vdCellWidth);
+            this.vdDisplayingSettings = false;
+          }
+        }
+        img.src = URL.createObjectURL(_evt.target.files[processedFile]);
+        if (_evt.target.files.length === 1)
+          document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
+      };
+      processOneFile();
+    },
+
+    mtdSizeUpdated: function() {
+      this.vdCells.forEach((_eachCellContent, i, theArray) => {
+        var re = new RegExp('height: ' + oldCellWidth + 'px; width: ' + oldCellWidth + 'px', 'g');
+        if (i === 0) console.log(theArray[i])
+        theArray[i] = _eachCellContent.replace(re, 'height: ' + this.vdCellWidth + 'px; width: ' + this.vdCellWidth + 'px');
+      });
+      oldCellWidth = this.vdCellWidth;
+      window.localStorage.setItem('f1_resolution', this.vdCellWidth);
+      window.localStorage.setItem('f1_frames', JSON.stringify({ frames: this.vdCells }));
+    },
+  },
+});
+</script>
+</body>
+</html>
