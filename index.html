@@ -46,12 +46,38 @@
     td {
       border: 0;
       box-sizing: border-box;
-      box-shadow: inset 0 0 9px -1px rgba(0, 0, 0, 1);
+      box-shadow:
+        inset 0 0 9px -1px rgba(0, 0, 0, 1),
+        inset 0 0 9px -1px rgba(0, 0, 0, 1);
       height: 20px;
       padding: 0;
+      position: relative;
       margin: 0;
       vertical-align: top;
       width: 20px;
+    }
+
+    /* td::before {
+      background: rgba(0, 0, 0, .6);
+      content: '';
+      display: block;
+      height: inherit;
+      width: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
+    }*/
+
+    td::after {
+      background: inherit;
+      border-radius: 50%;
+      content: '';
+      display: block;
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 10%;
+      bottom: 10%;
     }
 
     td.td--light {
@@ -125,6 +151,7 @@
 
   </div>
   <button
+    v-if="vdSettingsButtonVisible && !vdDisplayingSettings"
     class="settings-button"
     @click="mtdToggleSettings"
   >
@@ -161,8 +188,12 @@
             type="number"
             v-model="vdCellWidth"
             min="16"
-            @change="mtdSizeUpdated"
           />
+          <button
+            @click="vdCellWidth = 50"
+          >
+            Max
+          </button>
         </label>
 
         <label v-if="vdSettingFrame > 1">
@@ -174,6 +205,10 @@
             min="100"
           />
         </label>
+
+        <button @click="mtdClearFrames">
+          Clear all frames
+        </button>
       </div>
     </div>
   </div>
@@ -185,21 +220,36 @@
 
 let oldCellWidth = 20;
 
+const data = {
+  vdCellWidth: 20,
+  vdCols: 0, // width
+  vdRows: 0, // height
+  vdDisplayingSettings: true,
+  // vdColors: [],
+  vdCells: [],
+  vdTypes: [],
+  vdLoadedFrames: 0,
+  vdSettingFrame: 1,
+  vdCurrentFrame: 1,
+  vdFrameDuration: 1000,
+  vdLoadingImage: false,
+  vdSettingsButtonVisible: false,
+};
+
 new Vue({
   el: '#app',
-  data: {
-    vdCellWidth: 20,
-    vdCols: 0, // width
-    vdRows: 0, // height
-    vdDisplayingSettings: true,
-    // vdColors: [],
-    vdCells: [],
-    vdTypes: [],
-    vdLoadedFrames: 0,
-    vdSettingFrame: 1,
-    vdCurrentFrame: 1,
-    vdFrameDuration: 1000,
-    vdLoadingImage: false,
+  data: JSON.parse(JSON.stringify(data)),
+  watch: {
+    vdCellWidth: function(newValue, oldValue) {
+      this.vdCells.forEach((_eachCellContent, i, theArray) => {
+        var re = new RegExp('height: ' + oldCellWidth + 'px; width: ' + oldCellWidth + 'px', 'g');
+        // if (i === 0) console.log(theArray[i])
+        theArray[i] = _eachCellContent.replace(re, 'height: ' + newValue + 'px; width: ' + newValue + 'px');
+      });
+      oldCellWidth = newValue;
+      window.localStorage.setItem('f1_resolution', newValue);
+      window.localStorage.setItem('f1_frames', JSON.stringify({ frames: this.vdCells }));
+    }
   },
   mounted: function() {
     let framesInLocalStorage = [];
@@ -214,6 +264,7 @@ new Vue({
 
     const lastResolution = window.localStorage.getItem('f1_resolution');
     if (lastResolution !== null && !isNaN(lastResolution)) this.vdCellWidth = Number(lastResolution);
+    oldCellWidth = this.vdCellWidth;
 
     framesInLocalStorage.forEach((_eachPrevFrame) => {
       this.vdCells[this.vdSettingFrame - 1] = _eachPrevFrame;
@@ -228,9 +279,27 @@ new Vue({
       this.vdDisplayingSettings = false;
       this.tidalWave();
     }
+
+    document.addEventListener('touchstart', (evt) => {
+      if (this.vdSettingsButtonVisible) return;
+      this.vdSettingsButtonVisible = true;
+      setTimeout(() => {
+        this.vdSettingsButtonVisible = false;
+      }, 3000);
+    });
+
+    document.addEventListener('mousemove', (evt) => {
+      if (this.vdSettingsButtonVisible) return;
+      this.vdSettingsButtonVisible = true;
+      setTimeout(() => {
+        this.vdSettingsButtonVisible = false;
+      }, 3000);
+    });
   },
   methods: {
     tidalWave: function() {
+      if (vdCells.length === 0) return;
+
       document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
       this.vdCurrentFrame += 1;
 
@@ -301,25 +370,24 @@ new Vue({
             window.localStorage.setItem('f1_frames', JSON.stringify({ frames: this.vdCells }));
             window.localStorage.setItem('f1_resolution', this.vdCellWidth);
             this.vdDisplayingSettings = false;
+
+            document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
           }
         }
         img.src = URL.createObjectURL(_evt.target.files[processedFile]);
-        if (_evt.target.files.length === 1)
-          document.getElementById('table').innerHTML = this.vdCells[this.vdCurrentFrame - 1];
       };
       processOneFile();
     },
 
-    mtdSizeUpdated: function() {
-      this.vdCells.forEach((_eachCellContent, i, theArray) => {
-        var re = new RegExp('height: ' + oldCellWidth + 'px; width: ' + oldCellWidth + 'px', 'g');
-        // if (i === 0) console.log(theArray[i])
-        theArray[i] = _eachCellContent.replace(re, 'height: ' + this.vdCellWidth + 'px; width: ' + this.vdCellWidth + 'px');
-      });
-      oldCellWidth = this.vdCellWidth;
-      window.localStorage.setItem('f1_resolution', this.vdCellWidth);
-      window.localStorage.setItem('f1_frames', JSON.stringify({ frames: this.vdCells }));
-    },
+    /**
+     *
+     */
+    mtdClearFrames: function() {
+      localStorage.removeItem('f1_frames');
+      localStorage.removeItem('f1_resolution');
+      Object.assign(this.$data, data);
+      document.getElementById('table').innerHTML = '';
+    }
   },
 });
 </script>
